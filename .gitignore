@@ -1,6 +1,5 @@
 *.iml
 .gradle
-Dockerfile
 .vscode/
 /local.properties
 /.idea/caches

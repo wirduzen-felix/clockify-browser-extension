@@ -1,0 +1,9 @@
+version: "3"
+services:
+  shopware:
+    build: .docker
+    container_name: clockify
+    volumes:
+      - type: bind
+        source: ./
+        target: /home/dev/src
