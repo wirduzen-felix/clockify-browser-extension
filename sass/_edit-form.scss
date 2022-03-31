@@ -1,0 +1,117 @@
+.edit-form {
+  padding: 20px;
+
+  &__project_list {
+    margin-bottom: 10px;
+  }
+}
+
+.edit-form-description {
+  position: relative;
+  width: 100%;
+  height: 65px;
+  border: none;
+  resize: none;
+  font-size: 14px;
+  outline: none;
+  color: $dark_text;
+}
+
+.description-textarea {
+  margin-bottom: 10px;
+  border: 1px solid $border;
+  padding: 10px;
+  background: white;
+  border-radius: 2px;
+
+  &-required {
+    margin-bottom: 10px;
+    border: 1px solid $red;
+    padding: 10px;
+    background: white;
+    border-radius: 2px;
+  }
+}
+
+.edit-form-checkbox {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  top: 13px;
+  background: white;
+  border: 1px solid $border;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.edit-form-buttons {
+  margin-top: 20px;
+
+  &__billable {
+    margin-bottom: 20px;
+  }
+}
+
+.edit-form-billable-img {
+  content: url("../assets/images/checked.png");
+  margin-top: 2px;
+  margin-left: 1px;
+}
+
+.edit-form-billable-img-hidden {
+  content: url("../assets/images/checked.png");
+  margin-top: 2px;
+  margin-left: 1px;
+  visibility: hidden;
+}
+
+.edit-form-billable {
+  top: 13px;
+  margin-left: 10px;
+  color: $middle_light_text;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.edit-form-right-buttons {
+  margin-top: 20px;
+
+  &__back_and_delete {
+    margin-top: 20px;
+    justify-content: space-between;
+    text-align: center;
+  }
+
+  &__back {
+    color: $blue;
+    cursor: pointer;
+  }
+}
+
+.edit-form-delete {
+  color: red;
+  cursor: pointer;
+}
+
+.edit-form-done {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 3px;
+  color: white;
+  background: $blue;
+  cursor: pointer;
+
+  &-disabled {
+    width: 100%;
+    height: 50px;
+    border: none;
+    border-radius: 3px;
+    color: white;
+    background: $lighter_text;
+  }
+}
+
+
+
+

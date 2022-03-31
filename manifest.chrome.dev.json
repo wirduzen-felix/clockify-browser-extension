@@ -1,7 +1,7 @@
 {
   "manifest_version" : 2,
   "name": "Clockify Time Tracker WIRDUZEN",
-  "short_name": "Clockify",
+  "short_name": "WDU Clockify",
   "description": "Track time from anywhere on the web and improve productivity.",
   "background": {
     "scripts": [
