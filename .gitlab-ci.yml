@@ -11,10 +11,12 @@ build-job:
     - npm install
     - npm run compile.prod.chrome
     - npm run compile.prod.firefox
+    - zip -r chrome.zip chrome
+    - zip -r firefox.zip firefox
   artifacts:
     paths:
-      - firefox
-      - chrome
+      - firefox.zip
+      - chrome.zip
     reports:
       dotenv: build-job.env
   only:
@@ -34,8 +36,8 @@ release-job:
     assets:
       links:
         - name: 'Chrome'
-          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/chrome?job=build-job'
+          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/chrome.zip?job=build-job'
         - name: 'Firefox'
-          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/firefox?job=build-job'
+          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/firefox.zip?job=build-job'
   only:
     - tags
