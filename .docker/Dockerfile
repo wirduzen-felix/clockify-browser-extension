@@ -8,6 +8,7 @@ RUN mkdir -p /home/dev/src
 RUN useradd -UM -d /home/dev -G sudo dev
 RUN echo "dev:dev" | chpasswd
 RUN chown -R dev:dev /home/dev
+RUN gem install compass
 USER dev
 RUN touch ~/.bashrc
 RUN echo "cd /home/dev/src" >> ~/.bashrc
