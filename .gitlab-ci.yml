@@ -9,3 +9,7 @@ build-job:
     - npm install
     - npm run compile.prod.chrome
     - npm run compile.prod.firefox
+  artifacts:
+    paths:
+      - firefox.dev
+      - chrome.dev
