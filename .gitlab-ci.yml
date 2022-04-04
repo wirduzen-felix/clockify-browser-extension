@@ -11,5 +11,5 @@ build-job:
     - npm run compile.prod.firefox
   artifacts:
     paths:
-      - firefox.dev
-      - chrome.dev
+      - firefox
+      - chrome
