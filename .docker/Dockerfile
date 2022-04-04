@@ -13,6 +13,6 @@ RUN touch ~/.bashrc
 RUN echo "cd /home/dev/src" >> ~/.bashrc
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash &&\
     source ~/.bashrc &&\
-    nvm install stable &&\
-    nvm use stable
+    nvm install --lts &&\
+    nvm use --lts
 ENTRYPOINT ["tail", "-f", "/dev/null"]
