@@ -4,6 +4,8 @@ stages:
 build-job:
   stage: build
   image: git.wirduzen.zone:5050/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension:latest
+  before_script:
+    - echo GE_JOB_ID=$CI_JOB_ID >> build-job.env
   script:
     - whoami
     - npm install
@@ -13,3 +15,25 @@ build-job:
     paths:
       - firefox
       - chrome
+    reports:
+      dotenv: build-job.env
+  only:
+    - tags
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: build-job
+      artifacts: true
+  release:
+    name: 'Release $CI_COMMIT_TAG'
+    description: 'Download für die Browser Extensions'
+    tag_name: '$CI_COMMIT_TAG'
+    assets:
+      links:
+        - name: 'Chrome'
+          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/file/chrome'
+        - name: 'Firefox'
+          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/file/firefox'
+  only:
+    - tags
