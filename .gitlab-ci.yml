@@ -19,9 +19,11 @@ build-job:
       dotenv: build-job.env
   only:
     - tags
-release:
+release-job:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Running release"
   needs:
     - job: build-job
       artifacts: true
