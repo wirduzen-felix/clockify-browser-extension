@@ -34,8 +34,8 @@ release-job:
     assets:
       links:
         - name: 'Chrome'
-          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/file/chrome'
+          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/chrome?job=build-job'
         - name: 'Firefox'
-          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/file/firefox'
+          url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/firefox?job=build-job'
   only:
     - tags
