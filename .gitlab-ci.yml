@@ -1,0 +1,10 @@
+stages:
+  - build
+  - release
+build-job:
+  stage: build
+  image: git.wirduzen.zone:5050/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension:latest
+  script:
+    - npm install
+    - npm run compile.prod.chrome
+    - npm run compile.prod.firefox
