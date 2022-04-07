@@ -3,9 +3,9 @@ require 'compass/import-once/activate'
 
 # Set this to the root of your project when deployed:
 http_path = "/"
-css_dir = "chrome.dev/styles"
+css_dir = "chrome/styles"
 sass_dir = "sass"
-images_dir = "chrome.dev/assets/images"
+images_dir = "chrome/assets/images"
 images_path = "assets/images"
 javascripts_dir = "javascripts"
 
