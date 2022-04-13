@@ -7,9 +7,9 @@ clockifyButton.render('.page-actions__left:not(.clockify)', { observe: true }, f
         //holt die Info ob es abrechenbar ist
         const billable = $("div[data-test-id='tkt-properties-cf_nicht_abrechenbar'] input").value;
         //holt den Firmennamen ab
-        const company = $(".company-info a").innerText;
+        const company = $(".company-info a")?.innerText ?? "WIRDUZEN.DIGITAL GmbH";
         //holt die Freshdesk Id aus dem Link zur Firma ab
-        const companyFreshdeskID = /[^/]*$/.exec($(".company-info a").getAttribute('href'))[0];
+        const companyFreshdeskID = /[^/]*$/.exec($(".company-info a")?.getAttribute('href'))[0] ?? "101000312311";
         //holt den Betreff vom Ticket
         const ticketheading = $(".ticket-subject-heading").innerText;
         //holt die Ticket ID
