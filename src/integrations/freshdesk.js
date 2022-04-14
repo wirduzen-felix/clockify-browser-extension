@@ -41,7 +41,7 @@ clockifyButton.render('.page-actions__left:not(.clockify)', { observe: true }, f
         }
         /*Aufträge werden in ein Projekt Pro Kunden geladen und nicht abrechenbar angelegt, da sie über den Auftrag selbst
             abgerechnet werden*/
-        else if(type == "Erweiterung / Anpassung / Auftrag") {
+        else if(type == "Auftrag aus weclapp") {
                  link = clockifyButton.createButton(ticketheading,"Aufträge " + company, desc, false);
                 console.log("type: Aufträge");
         }
