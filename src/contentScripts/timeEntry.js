@@ -386,7 +386,7 @@ class TimeEntry extends ClockifyService {
             }
             task = taskDB;
 
-            if (!billable) {
+            if (typeof billable === undefined || billable === null) {
                 billable = projectDB ? projectDB.billable : false;
             }
         }    
