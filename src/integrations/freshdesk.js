@@ -1,9 +1,6 @@
 function render() {
   setTimeout(() => {
     clockifyButton.render('.page-actions__left:not(.clockify)', {observe: true}, function (elem) {
-      /*console.log("ELEMENTS: ");
-      console.log($("div[data-test-id='tkt-properties-cf_nicht_abrechenbar'] input").is(":checked"));
-      console.log($("input[name='customFields.cf_nicht_abrechenbar']").is(":checked"));*/
 
       //holt den Ticket Typ
       var type = "";
@@ -11,7 +8,7 @@ function render() {
         type = $("div[data-test-id='tkt-properties-ticket_type'] .ember-power-select-selected-item").innerText;
       }
       //holt die Info ob es abrechenbar ist
-      const billable = !($("input[name='customFields.cf_nicht_abrechenbar']").checked);
+      const billable = !($("input[name='customFields.cf_nicht_abrechenbar']")?.checked);
       //holt den Firmennamen ab
       const company = $(".company-info a")?.innerText ?? "WIRDUZEN.DIGITAL GmbH";
       //holt die Freshdesk Id aus dem Link zur Firma ab
@@ -69,27 +66,22 @@ function render() {
       link.style.display = "inline-flex";
       link.style.verticalAlign = "middle";
       elem.append(link);
+
+      let observer = new MutationObserver((mutations, observer) => {
+        console.log("Reloading clockify button");
+        document.querySelector("#clockifyButton").remove();
+        document.querySelector(".clockify").classList.remove("clockify");
+        render();
+        observer.disconnect();
+      });
+
+      observer.observe(document.querySelector(".ticket-subject-heading"), {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
     });
   }, 1000);
 }
 
 render();
-
-// PAIN ;(
-// FIXME: Aktuell wird der Observer mehrfach registriert. Das sollte irgendwie abgefangen werden
-setTimeout(() => {
-  console.log("REGISTERING OBSERVER")
-  let observer = new MutationObserver(clockifyDebounce((mutations, observer) => {
-    console.log("CHANGE DETECTED");
-    document.querySelector("#clockifyButton").remove();
-    document.querySelector(".clockify").classList.remove("clockify");
-    render();
-    observer.disconnect();
-  }, 1000));
-  observer.observe(document.querySelector(".ticket-subject-heading"), {
-    childList: true,
-    subtree: true,
-    characterData: true
-  })
-}, 1000)
-
