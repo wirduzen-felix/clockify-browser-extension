@@ -126,12 +126,12 @@ class TimeEntry extends React.Component {
                 }
                 return (
                     <div>
-                        <div className={((timeEntry.isLocked && !this.props.isUserOwnerOrAdmin) || timeEntry.approvalRequestId) ? "time-entry-locked" : "time-entry"}
+                        <div className={`${((timeEntry.isLocked && !this.props.isUserOwnerOrAdmin) || timeEntry.approvalRequestId) ? "time-entry-locked" : "time-entry"} ${this.props.collapsedEntry ? "collapsed" : ""}`}
                             title={this.state.title}
                             key={timeEntry.id}
-                            style={{
+                            /*style={{
                                 backgroundColor: this.props.collapsedEntry ? '#f6fcff' : 'white'
-                            }}
+                            }}*/
                             onClick={this.goToEdit.bind(this)}
                         >
                             {!!groupedEntries?.length && 

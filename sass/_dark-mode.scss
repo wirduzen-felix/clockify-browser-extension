@@ -1,8 +1,8 @@
 body.dark {
   background-color: $bg-09;
   .logo {
-    width: 98px;
-    background-image: url("../assets/images/clockify_logo_dark.svg");
+    width: 200px;
+    background-image: url("../assets/images/WIRDUZEN_logo.svg");
   }
   .header_and_timer {
     background-color: $bg-09;
@@ -57,6 +57,13 @@ body.dark {
   .time-entry, .time-entry-locked {
     background-color: $bg-11;
     border: 1px solid $bg-12;
+  }
+  .time-entry.collapsed, .time-entry-locked.collapsed {
+    background-color: $bg-13;
+  }
+  .time-entry-group-number {
+    background-color: $bg-13;
+    color: $bg-03;
   }
   .description {
     color: $bg-02;

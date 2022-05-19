@@ -14,17 +14,18 @@
 
 .logo {
   display: block;
-  width: 100px;
   height: 25px;
-  background-image: url("../assets/images/clockify_logo.svg");
+  background-image: url("../assets/images/WIRDUZEN_logo.svg");
   cursor: pointer;
+  background-repeat: no-repeat;
+  width: 200px;
 }
 
 .logo-selfhosted {
   display: block;
   width: 100px;
   height: 30px;
-  background-image: url("../assets/images/clockify_logo_selfhosted.svg");
+  //background-image: url("../assets/images/clockify_logo_selfhosted.svg");
   cursor: pointer;
 }
 
