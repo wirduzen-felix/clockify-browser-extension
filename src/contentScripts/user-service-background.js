@@ -4,30 +4,37 @@ class UserService extends ClockifyService {
     }
 
     static async getUser() {
-        const endPoint = `${this.apiEndpoint}/v1/user`;
+        const apiEndpoint = await this.apiEndpoint;
+        const endPoint = `${apiEndpoint}/v1/user`;
         const addToken = true;
         return await this.apiCall(endPoint);
     }
 
     static async getAndStoreUser() {
-        if (isNavigatorOffline()) 
+        if (await isNavigatorOffline()) 
             return;
-    
         const { data, error } = await this.getUser();
         if (data) {
-            const { email, id, activeWorkspace, settings } = data;
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userId', id);
-            localStorage.setItem('activeWorkspaceId', activeWorkspace);
-            localStorage.setItem('userSettings', JSON.stringify(settings));
-
-            UserWorkspaceStorage.getSetWorkspaceSettings();
+            const { email, id, activeWorkspace, settings, profilePicture } = data;
+            await localStorage.setItem('userEmail', email);
+            await localStorage.setItem('userId', id);
+            await localStorage.setItem('activeWorkspaceId', activeWorkspace);
+            await localStorage.setItem('userSettings', JSON.stringify(settings));
+            await localStorage.setItem('profilePicture', profilePicture);
+            if(settings.lang){
+                const lang = settings.lang.toLowerCase();
+                await localStorage.setItem('lang', lang);
+            }
+            UserWorkspaceStorage.getSetWorkspaceSettings(settings.projectPickerTaskFilter);
             UserService.getSetUserRoles();
         }
     }
 
     static async getUserRoles() {
-        const endPoint = `${this.apiEndpoint}/workspaces/${this.workspaceId}/users/${this.userId}/roles`;
+        const apiEndpoint = await this.apiEndpoint;
+        const workspaceId = await this.workspaceId;
+        const userId = await this.userId;
+        const endPoint = `${apiEndpoint}/workspaces/${workspaceId}/users/${userId}/roles`;
         return await this.apiCall(endPoint);
     }
 

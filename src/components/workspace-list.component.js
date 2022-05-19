@@ -1,8 +1,9 @@
 import * as React from 'react';
-import {WorkspaceService} from "../services/workspace-service";
+// import {WorkspaceService} from "../services/workspace-service";
 import {LocalStorageService} from "../services/localStorage-service";
+import locales from '../helpers/locales';
 
-const workspaceService = new WorkspaceService();
+// const workspaceService = new WorkspaceService();
 const localStorageService = new LocalStorageService();
 
 class WorkspaceList  extends React.Component {
@@ -11,50 +12,55 @@ class WorkspaceList  extends React.Component {
         super(props);
 
         this.state = {
-            workspaces: [],
+            // workspaces: [],
             isOpen: false,
-            selectedWorkspace: null,
-            previousWorkspace: null,
-            isSubDomain: !!localStorageService.get('subDomainName')
+            // selectedWorkspace: null,
+            // previousWorkspace: null,
+            isSubDomain: null
         }
+        this.setAsyncStateItems = this.setAsyncStateItems.bind(this);
     }
 
     componentDidMount() {
-        this.getWorkspaces();
+        // this.getWorkspaces();
+        this.setAsyncStateItems();
     }
 
-    componentDidUpdate(prevProps, prevState) {
-        if (prevState.previousWorkspace) {
+    async setAsyncStateItems() {
+        const subDomainName = !!(await localStorageService.get('subDomainName'));
+        this.setState({
+            subDomainName
+        });
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.previousWorkspace) {
             if (this.props.revert && 
                 this.props.revert != prevProps.revert && 
-                prevState.previousWorkspace.id != prevState.selectedWorkspace.id
+                prevProps.previousWorkspace.id != prevProps.selectedWorkspace.id
             ) {
-                this.setState({
-                    selectedWorkspace: prevState.previousWorkspace
-                }, () => {
-                    const {id, name} = this.state.selectedWorkspace
-                    this.props.selectWorkspace(id, name);
-                })
+                this.props.selectWorkspace(prevProps.previousWorkspace);
             }
         }
     }
         
 
-    getWorkspaces() {
-        workspaceService.getWorkspacesOfUser()
-            .then(response => {
-                let data = response.data;
-                let selectedWorkspace = data.filter(workspace => workspace.id === localStorage.getItem('activeWorkspaceId'))[0];
-                this.setState({
-                    workspaces: data,
-                    selectedWorkspace: selectedWorkspace,
-                    previousWorkspace: selectedWorkspace
-                })
-                this.props.onSetWorkspace(selectedWorkspace.id)
-            })
-            .catch(() => {
-            });
-    }
+    // getWorkspaces() {
+    //     workspaceService.getWorkspacesOfUser()
+    //         .then(async response => {
+    //             let data = response.data;
+    //             const activeWorkspaceId = await localStorage.getItem('activeWorkspaceId');
+    //             let selectedWorkspace = data.filter(workspace => workspace.id === activeWorkspaceId)[0];
+    //             this.setState({
+    //                 workspaces: data,
+    //                 selectedWorkspace: selectedWorkspace,
+    //                 previousWorkspace: selectedWorkspace
+    //             })
+    //             this.props.onSetWorkspace(selectedWorkspace.id)
+    //         })
+    //         .catch(() => {
+    //         });
+    // }
 
     toggleWorkspaceList() {
         if (this.state.isSubDomain) {
@@ -75,34 +81,30 @@ class WorkspaceList  extends React.Component {
     selectWorkspace(event) {
         let workspace = JSON.parse(event.target.getAttribute('value'));
         this.setState({
-            previousWorkspace: this.state.selectedWorkspace,
-            selectedWorkspace: workspace,
             isOpen: false
         }, () => {
-            this.props.selectWorkspace(workspace.id, workspace.name);
+            this.props.selectWorkspace(workspace);
         })
     }
 
-    
-
     render() {
-        if(this.state.selectedWorkspace === null) {
+        if(!this.props.selectedWorkspace) {
             return null;
         } else {
             return(
                 <div className="workspace-list">
-                    <div className="workspace-list-title">Workspace</div>
+                    <div className="workspace-list-title">{locales.WORKSPACE}</div>
                     <div className={this.state.isSubDomain ?
                             "workspace-list-selection list-disabled" : "workspace-list-selection"}
                          onClick={this.toggleWorkspaceList.bind(this)}>
                         <span className="workspace-list-default"
-                              title={this.state.selectedWorkspace.name}>
-                            {this.state.selectedWorkspace.name}
+                              title={this.props.selectedWorkspace.name}>
+                            {this.props.selectedWorkspace.name}
                         </span>
                         <span className={this.state.isOpen ? 'tag-list-arrow-up' : 'tag-list-arrow'} ></span>
                     </div>
                     <div className={this.state.isOpen ? "workspace-list-dropdown" : "disabled"}>
-                        {this.state.workspaces.map(workspace => {
+                        {this.props.workspaces.map(workspace => {
                             return(
                                 <div key={workspace.id} className="workspace-list-item">
                                     <span className="workspace-list-item--name"
@@ -112,7 +114,7 @@ class WorkspaceList  extends React.Component {
                                         {workspace.name}
                                     </span>
                                     <span className={workspace.id ===
-                                            localStorage.getItem('activeWorkspaceId') ?
+                                            this.props.selectedWorkspace.id ?
                                                "workspace-list-active__img" : "disabled"}>
                                     </span>
                                 </div>

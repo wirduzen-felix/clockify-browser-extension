@@ -1,38 +1,39 @@
+
 const buttonClickedListener = (notificationId, buttonIndex) => {
     switch (notificationId) {
         case 'idleDetection':
-            if (idleButtons[buttonIndex] === 'Discard idle time') {
+            if (buttonIndex === 0) {
                 this.discardIdleTimeAndStopEntry();
             } else {
                 this.discardIdleTimeAndContinueEntry();
             }
             break;
         case 'reminder':
-            if (reminderButtons[buttonIndex] === 'Start timer') {
+            if (buttonIndex === 0) {
                 TimeEntry.startTimer('');
                 this.removeReminderTimer();
             } else {
-                aBrowser.tabs.create({'url': 'https://clockify.me/tracker?mode=manual'});
+                aBrowser.tabs.create({'url': 'https://app.clockify.me/tracker?mode=manual'});
                 this.removeReminderTimer();
                 this.addReminderTimer();
             }
             break;
         case 'pomodoroBreak':
-            if (breakButtons[buttonIndex] === 'Stop timer') {
+            if (buttonIndex === 0) {
                 this.stopTimerByPomodoro();
             } else if (breakButtons[buttonIndex] === 'Start break') {
                 this.startBreak('Pomodoro break');
             }
             break;
         case 'pomodoroLongBreak':
-            if (longBreakButtons[buttonIndex] === 'Stop timer') {
+            if (buttonIndex === 0) {
                 this.stopTimerByPomodoro();
             } else {
                 this.startBreak('Pomodoro long break');
             }
             break;
         case 'breakOver':
-            if (breakOverButtons[buttonIndex] === 'Start timer') {
+            if (buttonIndex === 0) {
                 this.startTimerByPomodoro();
             } else {
                 this.continueLastEntryByPomodoro();
@@ -90,11 +91,13 @@ const notificationClickedListener = (notificationId) => {
     }
 };
 
+aBrowser.notifications.onButtonClicked.addListener(buttonClickedListener);
+aBrowser.notifications.onClicked.addListener(notificationClickedListener);
+aBrowser.notifications.onClosed.addListener(notificationClosedListener);
+
 function createNotification(notificationId, notificationOptions, isAudioOn) {
     aBrowser.notifications.create(notificationId, notificationOptions, (callback) => {
-        aBrowser.notifications.onButtonClicked.addListener(buttonClickedListener);
-        aBrowser.notifications.onClicked.addListener(notificationClickedListener);
-        aBrowser.notifications.onClosed.addListener(notificationClosedListener);
+        
     });
 
     if (isAudioOn) {
@@ -103,8 +106,10 @@ function createNotification(notificationId, notificationOptions, isAudioOn) {
 }
 
 function audioNotification() {
-    const audio = new Audio('../assets/audio/pomodoro-notification.ogg');
-    audio.play();
+    // TODO: Add audio support for service workers
+    // const audio = new Audio('../assets/audio/pomodoro-notification.ogg');
+    // audio.play();
+    // aBrowser.runtime.sendMessage({eventName: 'settingsPlayAudio'});
 }
 
 function clearNotification(notificationId) {

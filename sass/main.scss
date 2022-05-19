@@ -11,6 +11,7 @@
 @import "edit-form";
 @import "projects-list";
 @import "tag-list";
+@import "poppup-modal";
 @import "custom-fields";
 @import "settings";
 @import "required-fields";
@@ -48,6 +49,10 @@ body {
 }
 * {
   font-family: 'Roboto', Arial, sans-serif !important;
+}
+
+button {
+  text-transform: uppercase;
 }
 
 hr {
@@ -210,7 +215,7 @@ hr {
 }
 .day-active {
   background: $blue;
-  border: 1px solid #00a0f0;
+  border: 1px solid #03A9F4;
   span {
     color: $input-background;
   }

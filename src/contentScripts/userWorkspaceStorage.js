@@ -1,18 +1,18 @@
 class UserWorkspaceStorage {
 
-    constructor(storageName=DefaultProjectEnums.DEFAULT_PROJECTS, isPermanent=true) 
+    constructor(storageName=DefaultProjectEnums.DEFAULT_PROJECTS, storageItems, isPermanent=true) 
     {
         this.storageName = storageName;
         this.isPermanent = isPermanent;
 
-        this.workspaceId = localStorage.getItem('activeWorkspaceId');
-        this.userId = localStorage.getItem('userId');
+        this.workspaceId = storageItems.workspaceId;
+        this.userId = storageItems.userId;
         
-        const ws = localStorage.getItem('workspaceSettings');
+        const ws = storageItems.ws;
         const wsSettings = ws ? JSON.parse(ws) : { forceTasks: false };
         this.forceTasks = wsSettings.forceTasks;
 
-        const str = localStorage.getItem(`${isPermanent ? 'permanent_' : ''}${storageName}`);
+        const str = storageItems.str;
         let storage = str ? JSON.parse(str) : {};
         if (Array.isArray(storage)) {
             const obj = {};
@@ -52,7 +52,8 @@ class UserWorkspaceStorage {
     static get token() { return localStorage.getItem('token') }
 
     static async getProjectPickerTaskFilter() {
-        let endPoint = `${this.apiEndpoint}/v1/user`;
+        const apiEndpoint = await this.apiEndpoint;
+        let endPoint = `${apiEndpoint}/v1/user`;
         const { data, error, status } = await ClockifyService.apiCall(endPoint);
         if (data) {
             return data.settings.projectPickerTaskFilter;
@@ -61,13 +62,16 @@ class UserWorkspaceStorage {
             return false;
     }
 
-    static async getSetWorkspaceSettings() {
-        let endPoint = `${this.apiEndpoint}/workspaces/${this.workspaceId}`;
+    static async getSetWorkspaceSettings(projectPickerTaskFilter) {
+        const apiEndpoint = await this.apiEndpoint;
+        const workspaceId = await this.workspaceId;
+        const userSettings = JSON.parse(await localStorage.getItem('userSettings'));
+        projectPickerTaskFilter = projectPickerTaskFilter || (userSettings && userSettings.projectPickerTaskFilter) || false;
+        let endPoint = `${apiEndpoint}/workspaces/${workspaceId}`;
         const { data, error, status } = await ClockifyService.apiCall(endPoint);
         if (data) {
             const { workspaceSettings, features } = data;
-            console.log({ workspaceSettings, features })
-            workspaceSettings.projectPickerSpecialFilter = await UserWorkspaceStorage.getProjectPickerTaskFilter();
+            workspaceSettings.projectPickerSpecialFilter = projectPickerTaskFilter;
             workspaceSettings.features = { 
                 customFields: features.some(feature => feature === "CUSTOM_FIELDS")
             }
@@ -130,7 +134,7 @@ class UserWorkspaceStorage {
         workspace.defaultProject = {
             project: {
                 id: DefaultProjectEnums.LAST_USED_PROJECT,
-                name: 'Last used project'
+                name: clockifyLocales.LAST_USED_PROJECT
             },
             enabled: true
         }

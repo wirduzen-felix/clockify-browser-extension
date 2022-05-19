@@ -1,14 +1,14 @@
 _clockifyWithoutClient = 'WITHOUT-CLIENT';
 
-_clockifyNoProjectObj = { 
+_clockifyNoProjectObj = () => ({ 
     id: 'no-project',
-    name: 'No project',
+    name: clockifyLocales.NO_PROJECT,
     client: { 
         name: 'NO-PROJECT'
     },
     color: '#999999', 
     tasks: []
-}
+})
 
 var ClockifyProjectList = class {
 
@@ -43,7 +43,7 @@ var ClockifyProjectList = class {
     get initialProjectList() {
         const { SelectedProject } = this.editForm;
         return !this.wsSettings.forceProjects && SelectedProject && SelectedProject.id !== 'no-project' && SelectedProject.id !== null
-            ? [_clockifyNoProjectObj]
+            ? [_clockifyNoProjectObj()]
             : []
     }
 
@@ -86,6 +86,23 @@ var ClockifyProjectList = class {
     }
 
     componentDidMount() {
+        aBrowser.storage.local.get('preProjectList', (result) => {
+            const preProjectList = result.preProjectList || {};
+            let {projectList = this.initialProjectList, clientProjects = {}} = preProjectList;
+            if(this.editForm.isForceTasks){
+                projectList = projectList.filter(project => project.taskCount > 0);
+                clientProjects = this.getClients(projectList);
+            }
+            else if(!preProjectList || !preProjectList.clientProjects){
+                clientProjects = this.getClients(projectList);
+            }
+            this.setState({
+                projectList,
+                clientProjects,
+                ready: true
+            });
+            this.setState({}, true);
+        });
         this.getProjects();
         this.render();
         this.repositionDropDown();
@@ -111,10 +128,13 @@ var ClockifyProjectList = class {
                         "clockify-project-list-button-required" : "clockify-project-list-button"}'>` +
                 `<span style='color: ${this.state.selectedProject ? this.state.selectedProject.color : "#999999"}'` +
                     " class='clockify-project-list-name'>" + 
-                    `${this.state.selectedProject ? this.state.selectedProject.name : "Add project"}` +
+                    `${this.state.selectedProject ? this.state.selectedProject.name : clockifyLocales.ADD_PROJECT}` +
                     "<span>" + 
                         (this.state.selectedTaskName === "" ? "" : ` : ${this.state.selectedTaskName}`) + 
                     "</span>" + 
+                    "<span class='clockify-project-list-name-client'>" +
+                    (this.state.selectedProject && this.state.selectedProject.client && this.state.selectedProject.client.name && this.state.selectedProject.client.name !== 'NO-PROJECT' ? " - " + this.state.selectedProject.client.name : "") +    
+                    "</span>" +
                     // "<input id='inputClockifyProjectTask' class='clockify-project-list-name' type='text'/>" +
                 "</span>" +
                 "<span class='clockify-span-arrow'>" +
@@ -122,7 +142,7 @@ var ClockifyProjectList = class {
                     " alt='open' class='clockify-project-list-arrow' />" + 
                 "</span>" + 
             "</div>" +
-            (this.editForm.isTaskRequired ? "<div className='error'>Can't save without task</div>" : "")
+            (this.editForm.isTaskRequired ? `<div className='error'>${clockifyLocales.CANT_SAVE_WITHOUT_REQUIRED_FIELDS} (${clockifyLocales.TASK})</div>` : "")
         return str;
     }
 
@@ -317,12 +337,12 @@ var ClockifyProjectList = class {
                 filter, 
                 page, 
                 pageSize,
-                forceTasks: this.editForm.isForceTasks,
+                forceTasks: false,
                 alreadyIds: this.state.projectList.map(p => p.id)
             }
         }, (response) => {
             if (!response) {
-                alert("You must be logged in to start time entry (projectList).");
+                alert(clockifyLocales.YOU_MUST_BE_LOGGED_IN_TO_START);
                 return;
             }
             else if (typeof response === 'string') {
@@ -333,8 +353,15 @@ var ClockifyProjectList = class {
                 // openPostStartPopup("Can't start entry without project/task/description or tags. Please edit your time entry. Please create your time entry using the dashboard or edit your workspace settings.")
                 // alert("Can't start entry without project/task/description or tags. Please edit your time entry. Please create your time entry using the dashboard or edit your workspace settings.");
             } else {
-                const items = response.data ? response.data.projectList : [];
-                const projectList = this.state.projectList.concat(items);                
+                let items = response.data ? response.data.projectList : [];
+                const loadMore = items.length >= this.state.pageSize ? true : false;
+                if(this.editForm.isForceTasks){
+                    items = items.filter(project => project.taskCount > 0);
+                }
+                if(!filter && page === 1){
+                    aBrowser.storage.local.set({'preProjectList': {projectList: items}});
+                }
+                const projectList = this.state.page === 1 ? items : this.state.projectList.concat(items);                
                 this.setState({
                     projectList: this.state.filter.length > 0 
                         ? projectList.filter(project => project.id !== "no-project")
@@ -342,14 +369,14 @@ var ClockifyProjectList = class {
                             ? projectList 
                             : this.wsSettings.forceProjects
                                 ? []
-                                : [_clockifyNoProjectObj],
+                                : [_clockifyNoProjectObj()],
                     page: this.state.page + 1,
                     ready: true
                 })
 
                 this.setState({
                     clientProjects: this.getClients(this.state.projectList),
-                    loadMore: items.length >= this.state.pageSize ? true : false,
+                    loadMore: loadMore,
                     specFilterNoTasksOrProject: 
                         this.createMessageForNoTaskOrProject(
                             response.data, this.state.isSpecialFilter, this.state.filter
@@ -412,10 +439,13 @@ var ClockifyProjectList = class {
     createMessageForNoTaskOrProject(projects, isSpecialFilter, filter) {
         if (!isSpecialFilter || filter.length === 0 || projects.length > 0) return ""
         
+        const noMatcingTasks = clockifyLocales.NO_MATCHING('tasks');
+        const noMatcingTProjects = clockifyLocales.NO_MATCHING('projects');
+
         if (!filter.includes("@")) {
-            return "No matching tasks. Search projects with @project syntax"
+            return `${noMatcingTasks}. ${clockifyLocales.MONKEY_SEARCH}`
         } else {
-            return "No matching projects"
+            return noMatcingTProjects
         }
     }
 
@@ -475,7 +505,14 @@ var ClockifyProjectList = class {
                     const projectDB = response.data && response.data.length > 0 ? response.data[0] : null;
                     if (projectDB && !projectDB.archived) {  // archived should have alerady been checked 
                         this.setState({
-                            selectedProject: projectDB,
+                            selectedProject: {
+                                id: projectDB.id,
+                                name: projectDB.name,
+                                color: projectDB.color,
+                                client: {
+                                    name: projectDB.clientName
+                                }
+                            },
                             selectedTaskName: ''
                         });
                         const {tasks}  = projectDB; // this.state.selectedProject;
@@ -507,29 +544,28 @@ var ClockifyProjectList = class {
     }    
 
     createTitle() {
-        let title = 'Add project';
+        let title = clockifyLocales.ADD_PROJECT;
         if (this.state.selectedProject && this.state.selectedProject.id) {
-            title = 'Project: ' + this.state.selectedProject.name;
+            title = `${clockifyLocales.PROJECT}: ` + this.state.selectedProject.name;
 
             if (this.state.selectedTaskName) {
-                title = title + '\nTask: ' + this.state.selectedTaskName;
+                title = title + `\n${clockifyLocales.TASK}: ` + this.state.selectedTaskName;
             }
 
             if (this.state.selectedProject.client && this.state.selectedProject.client.name) {
-                title = title + '\nClient: ' + this.state.selectedProject.client.name;
+                title = title + `\n${clockifyLocales.CLIENT}: ` + this.state.selectedProject.client.name;
             }
         }
         return title;
     }
 
     createNameForSelectedProject() {
-        let name = 'Add project';
+        let name = clockifyLocales.ADD_PROJECT;
         if (this.editForm.isProjectRequired) {
-            name += ' (project ';
             if (this.editForm.isTaskRequired) {
-                name = 'Add task (';
+                name = `${clockifyLocales.ADD_TASK}`;
             }
-            name += 'required)'
+            name += ` ${clockifyLocales.REQUIRED_LABEL}`;
         }
         return name;
     }
@@ -570,7 +606,8 @@ var ClockifyProjectList = class {
             "<div class='clockify-list-input'>" + 
                 "<div class='clockify-list-input--border'>" + 
                     "<input id='inputClockifyProjectFilter' type='text'" +
-                        ` placeholder="${this.wsSettings.projectPickerSpecialFilter ? 'Filter task @project or client' : 'Filter projects'}"` + 
+                        ` placeholder="${this.wsSettings.projectPickerSpecialFilter
+                                ? clockifyLocales.MONKEY_SEARCH : clockifyLocales.FIND_PROJECTS}"` + 
                             " class='clockify-list-filter' style='padding: 3px 0px'/>" + 
                     (!!this.state.filter ? "<span class='clockify-list-filter__clear' />" : "") + 
                 "</div>" + 
@@ -620,7 +657,7 @@ var ClockifyProjectList = class {
 
         if (clientProjects['FAVORITES'] && clientProjects['FAVORITES'].length > 0) {
             str += '<li><ul class="clockify-drop-down-2">' + 
-                        `<li class="clockify-project-list-client"><i>FAVORITES</i></li>`;
+                        `<li class="clockify-project-list-client"><i>${clockifyLocales.FAVORITES.toUpperCase()}</i></li>`;
             const arr = [];
             clientProjects['FAVORITES']              
                 .map(project => {
@@ -634,7 +671,7 @@ var ClockifyProjectList = class {
 
         if (clientProjects['WITHOUT-CLIENT'] && clientProjects['WITHOUT-CLIENT'].length > 0) {
             str += '<li><ul class="clockify-drop-down-2">' + 
-                        `<li class="clockify-project-list-client"><i>Without client</i></li>`;
+                        `<li class="clockify-project-list-client"><i>${clockifyLocales.WITHOUT_CLIENT}</i></li>`;
             const arr = [];
             clientProjects['WITHOUT-CLIENT']              
                 .map(project => {
@@ -661,7 +698,7 @@ var ClockifyProjectList = class {
         })
 
         if (this.state.loadMore) {
-            str += "<button class='clockify-list-load' id='clockifyLoadMoreProjects'>Load more</button>";
+            str += `<button class='clockify-list-load' id='clockifyLoadMoreProjects'>${clockifyLocales.LOAD_MORE}</button>`;
         }
         
 		const ul = this.getDropDownPopupElem('#ulClockifyProjectDropDown');
@@ -784,7 +821,7 @@ var ClockifyProjectList = class {
                 let projectList; // = this.state.projectList;
                 if (project.id && !this.wsSettings.forceProjects) {
                     if (this.state.projectList.find(project => project.id === "no-project")) {
-                        projectList = [_clockifyNoProjectObj, ...this.state.projectList]
+                        projectList = [_clockifyNoProjectObj(), ...this.state.projectList]
                     } else {
                         projectList = this.state.projectList
                     }

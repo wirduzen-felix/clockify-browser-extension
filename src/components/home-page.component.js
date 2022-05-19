@@ -10,14 +10,13 @@ import EditForm from './edit-form.component';
 import RequiredFields from './required-fields.component';
 import {isOffline} from "./check-connection";
 import packageJson from '../../package';
-import 'babel-polyfill';
+import '@babel/polyfill';
 import {getIconStatus} from "../enums/browser-icon-status-enum";
 import {Application} from "../application";
 import {TimeEntryService} from "../services/timeEntry-service";
 import {WorkspaceService} from "../services/workspace-service";
 import {ProjectService} from "../services/project-service";
 import {getBrowser} from "../helpers/browser-helper";
-import {isAppTypeExtension} from "../helpers/app-types-helper";
 import {getWebSocketEventsEnums} from "../enums/web-socket-events.enum";
 //import {WebSocketClient} from "../web-socket/web-socket-client";
 import {LocalStorageService} from "../services/localStorage-service";
@@ -30,6 +29,7 @@ import {debounce} from "lodash";
 import Logger from './logger-component'
 import {UserService} from "../services/user-service";
 import {offlineStorage} from '../helpers/offlineStorage';
+import locales from "../helpers/locales";
 
 const projectService = new ProjectService();
 const userService = new UserService();
@@ -87,18 +87,19 @@ class HomePage extends React.Component {
                 forceProjects: false
             },
             features: [],
-            mode: localStorage.getItem('mode') ? localStorage.getItem('mode') : 'timer',
+            mode: 'timer',
             manualModeDisabled: false,
             pullToRefresh: false,
             projects: [],
             tasks: [],
-            userSettings: JSON.parse(localStorage.getItem('userSettings')),
+            userSettings: {},
             durationMap: {},
             isUserOwnerOrAdmin: false,
-            isOffline: isOffline()
+            isOffline: null,
+            lang: 'en'
         };
 
-        this.application = new Application(localStorageService.get('appType'));
+        this.application = new Application();
 
         this.initialJob = this.initialJob.bind(this);
         this.handleScroll = this.handleScroll.bind(this);
@@ -118,15 +119,54 @@ class HomePage extends React.Component {
         this.displayLog = this.displayLog.bind(this);
         this.workspaceChanged = this.workspaceChanged.bind(this);
         this.changeMode = this.changeMode.bind(this);
+        this.setAsyncStateItems = this.setAsyncStateItems.bind(this);
+        this.onStorageChange = this.onStorageChange.bind(this);
+        this.clearEntries = this.clearEntries.bind(this);
 
-        offlineStorage.load();
+        offlineStorage.load();     
+    }
 
-        if (!isAppTypeExtension() && window.ipcRenderer) {
-            window.ipcRenderer.on('online-status-changed', (event, message) => { 
-                this.log("online-status-changed => " + message);
-                this.connectionHandler({type: message});
-            });
-        }        
+    async setAsyncStateItems() {
+        let mode = await localStorage.getItem('mode');
+        const isOff = await isOffline();
+        const lang = await localStorage.getItem('lang');
+        const preData = await localStorage.getItem('preData');
+        moment.locale(lang);
+
+        mode = mode ? mode : 'timer';
+        const userSettings = JSON.parse(await localStorage.getItem('userSettings')) || {};
+        this.setState({
+            mode,
+            userSettings,
+            isOffline: isOff
+        });
+
+        if(preData){
+            let timeEntries = preData?.groupEntries;
+            if(!preData.groupEntries && preData.bgEntries){
+                timeEntries = await this.groupEntries(preData.bgEntries, preData.durationMap);
+            }
+            this.setState(state => ({
+                timeEntries: timeEntries || state.timeEntries,
+                dates: preData?.dates || state.dates,
+                durationMap: preData?.durationMap || state.durationMap
+            }));
+        }
+
+
+        localStorage.setItem('appVersion', packageJson.version);
+        document.addEventListener('backbutton', this.handleBackButton, false);
+        document.addEventListener('scroll', this.handleScroll, false);
+        htmlStyleHelper.addOrRemoveDarkModeClassOnBodyElement();
+
+         _receiveOfflineEventsName = "receivingOfflineEvents";
+        
+        this.getWorkspaceSettings();
+
+        this.initialJob();
+        
+        if (_withLogger)
+            _loggerInterval = setInterval(() => { this.displayLog() }, 3000);
     }
     
     log(msg) {
@@ -144,37 +184,43 @@ class HomePage extends React.Component {
         }
     }
 
-    componentDidMount() {
-        this.log("componentDidMount");
-        localStorage.setItem('appVersion', packageJson.version);
-        document.addEventListener('backbutton', this.handleBackButton, false);
-        document.addEventListener('scroll', this.handleScroll, false);
-        htmlStyleHelper.addOrRemoveDarkModeClassOnBodyElement();
-
-        if (isAppTypeExtension()) {
-            _receiveOfflineEventsName = "receivingOfflineEvents";
+    async onStorageChange(changes) {
+        if (changes.workspaceSettings?.newValue) {
+            this.workspaceSettings = true;
         }
-        else {
-            _receiveOfflineEventsName = "receivingOfflineEventsDesktop";
-        }
-       
-        this.log(`receive Offline Events: ${localStorageService.get(_receiveOfflineEventsName, 'false')}`);
-
-        this.getWorkspaceSettings()
-            .then(response => {
-                this.initialJob();
-            })
-            .catch(error => {
-                this.initialJob(); // offLine mode
-            });
         
-        if (_withLogger)
-            _loggerInterval = setInterval(() => { this.displayLog() }, 3000);
+        if(this.workspaceSettings){
+            this.workspaceSettings = false;
+            this.forceUpdate();
+            this.setAsyncStateItems();
+            getBrowser().storage.onChanged.removeListener(this.onStorageChange);
+        }
+    }
+
+    async componentDidMount() {
+        const workspaceSettings = await localStorage.getItem('workspaceSettings');
+        if(!workspaceSettings){
+            getBrowser().storage.onChanged.addListener(this.onStorageChange);
+            return;
+        }
+
+        this.setAsyncStateItems();
+        
        
     }
 
-    initialJob() {
-        if (localStorageService.get(_receiveOfflineEventsName, 'false') !== 'true') {
+    componentDidUpdate() {
+        localStorageService.get('activeWorkspaceId').then(activeWorkspaceId => {
+            if(activeWorkspaceId !== this.state.activeWorkspaceId){
+                this.setState({activeWorkspaceId});
+            }
+        }).catch(error => console.log(error));
+    }
+
+    async initialJob() {
+        const receiveOfflineEventsName = await localStorageService.get(_receiveOfflineEventsName, 'false');
+        const isOnline = !(await isOffline());
+        if ( receiveOfflineEventsName !== 'true') {
             this.log('=> polling offline mode')
             if (_timeoutCheckOffline)
                 clearTimeout(_timeoutCheckOffline);
@@ -187,26 +233,27 @@ class HomePage extends React.Component {
         if (!_networkHandlerListener)
             this.networkMessagesHandler();
 
-        if (isAppTypeExtension()) {
-            if (!_webSocketConnectExtensionDone) {
-                this.enableAllIntegrationsButtonIfNoneIsEnabled();
-                this.enableTimerShortcutForFirstTime();
-                if (!isOffline()) {
-                    getBrowser().runtime.sendMessage({
-                        eventName: 'webSocketConnect'
-                    });
-                    _webSocketConnectExtensionDone = true;
-                }
-                this.getEntryFromPomodoroAndIdleEvents();
+        
+        if (!_webSocketConnectExtensionDone) {
+            this.enableAllIntegrationsButtonIfNoneIsEnabled();
+            this.enableTimerShortcutForFirstTime();
+            if (isOnline) {
+                getBrowser().runtime.sendMessage({
+                    eventName: 'webSocketConnect'
+                });
+                _webSocketConnectExtensionDone = true;
             }
-        } 
+            this.getEntryFromPomodoroAndIdleEvents();
+        }
+        
 
-        if (!isOffline()) {
+        if (isOnline) {
             this.setIsUserOwnerOrAdmin();
         }
-        else {
+        // else {
+            
             this.handleRefresh();
-        }        
+        // }        
     }
 
     workspaceChanged() {
@@ -239,6 +286,8 @@ class HomePage extends React.Component {
         this.log("componentWillUnmount done");
         if (_loggerInterval)
             clearInterval(_loggerInterval);
+
+        getBrowser().storage.onChanged.removeListener(this.onStorageChange);
     }
 
     reloadOnlineByEvent() {
@@ -297,8 +346,8 @@ class HomePage extends React.Component {
             });
     }
 
-    checkReload() {
-        const isOff = isOffline();
+    async checkReload() {
+        const isOff = await isOffline();
         this.log('checkReload ' + (isOff ? 'offLine' : 'onLine'));
 
         if (this.state.isOffline !== isOff) {
@@ -340,8 +389,8 @@ class HomePage extends React.Component {
         });
     }
 
-    setIsUserOwnerOrAdmin() {
-        if (!isOffline()) {
+    async setIsUserOwnerOrAdmin() {
+        if (!(await isOffline())) {
             workspaceService.getPermissionsForUser().then(workspacePermissions => {
                 // console.log('workspacePermissions', workspacePermissions)
                 const isUserOwnerOrAdmin = workspacePermissions.filter(permission =>
@@ -352,16 +401,16 @@ class HomePage extends React.Component {
                     isUserOwnerOrAdmin
                 }, () => {
                     localStorageService.set('isUserOwnerOrAdmin', isUserOwnerOrAdmin);
-                    this.handleRefresh(true);
+                    // this.handleRefresh(true);
                 });
             });
         }
     }
 
-    enableTimerShortcutForFirstTime() {
-        const userId = localStorageService.get('userId');
-        let timerShortcutFromStorage =
-            localStorageService.get('timerShortcut') ? JSON.parse(localStorageService.get('timerShortcut')) : [];
+    async enableTimerShortcutForFirstTime() {
+        const userId = await localStorageService.get('userId');
+        let timerShortcutFromStorage = await localStorageService.get('timerShortcut');
+        timerShortcutFromStorage = timerShortcutFromStorage ? JSON.parse(timerShortcutFromStorage) : [];
 
         if (
             timerShortcutFromStorage.length === 0 ||
@@ -449,25 +498,28 @@ class HomePage extends React.Component {
         getBrowser().runtime.onMessage.addListener(_networkHandlerListener);
     }
 
-    saveAllOfflineEntries() {
-        if (!isOffline()) {
+    async saveAllOfflineEntries() {
+        if (!(await isOffline())) {
             let timeEntries = offlineStorage.timeEntriesOffline;
             timeEntries.map(entry => {
-                const customFields = entry.customFieldsValues.map(cf => ({
-                    customFieldId: cf.customFieldId, //wsCustomField.id, 
-                    sourceType: 'TIMEENTRY',
-                    value: cf.value
-                }))
-                timeEntryService.createEntry(
-                    entry.workspaceId,
+
+                const cfs = customFieldValues && customFieldValues.length > 0
+                                ? customFieldValues.filter(cf => cf.customFieldDto.status === 'VISIBLE').map(({type, customFieldId, value}) => ({ 
+                                    customFieldId,
+                                    sourceType: 'TIMEENTRY',
+                                    value: type === 'NUMBER' ? parseFloat(value) : value
+                                }))
+                                : [];
+
+                timeEntryService.startNewEntry(
+                    entry.projectId,  // null
                     entry.description,
+                    entry.billable,
                     entry.timeInterval.start,
                     entry.timeInterval.end,
-                    entry.projectId,  // null
                     entry.taskId, // null
                     entry.tagIds || [],
-                    entry.billable,
-                    customFields
+                    cfs
                 ).then(response => {
                     let timeEntries = offlineStorage.timeEntriesOffline;
                     if (timeEntries.findIndex(entryOffline => entryOffline.id === entry.id) > -1) {
@@ -497,10 +549,10 @@ class HomePage extends React.Component {
         }
     }
 
-    getWorkspaceSettings() {
-        const userId = localStorage.getItem('userId');
-        const activeWorkspaceId = localStorageService.get('activeWorkspaceId')
-        if (!isOffline()) {
+    async getWorkspaceSettings() {
+        const userId = await localStorage.getItem('userId');
+        const activeWorkspaceId = await localStorageService.get('activeWorkspaceId');
+        if (!(await isOffline())) {
             userService.getUserRoles(activeWorkspaceId, userId)
                 .then(response => {
                     if (response && response.data && response.data.userRoles) {
@@ -522,7 +574,6 @@ class HomePage extends React.Component {
         return workspaceService.getWorkspaceSettings()
             .then(response => {
                 let { workspaceSettings, features } = response.data;
-                //console.log('workspaceSettings, features', { workspaceSettings, features })
                 workspaceSettings.projectPickerSpecialFilter = this.state.userSettings.projectPickerTaskFilter;
                 if (!workspaceSettings.hasOwnProperty('timeTrackingMode')) {
                     workspaceSettings.timeTrackingMode = getManualTrackingModeEnums().DEFAULT;
@@ -534,7 +585,7 @@ class HomePage extends React.Component {
                     manualModeDisabled,
                     mode: manualModeDisabled ? 'timer' : this.state.mode,
                 }, () => {
-                    localStorageService.set('modeEnforced', this.state.mode); // for usage in edit-forms
+                    localStorageService.set('mode', this.state.mode); // for usage in edit-forms
                     localStorageService.set('manualModeDisabled', JSON.stringify(this.state.manualModeDisabled)); // for usage in header
                     workspaceSettings = Object.assign(workspaceSettings, { 
                         features: { 
@@ -555,30 +606,33 @@ class HomePage extends React.Component {
             });
     }
 
-    getTimeEntries(reload) {
-        if (!isOffline()) { // shouldn't use this.state.isOffline here
-            this.log('service.getTimeEntries()');
+    async getTimeEntries(reload) {
+        const isOff = await isOffline();
+        if (!isOff) { // shouldn't use this.state.isOffline here
             timeEntryService.getTimeEntries(reload ? 0 : this.state.pageCount)
-                .then(response => {
+                .then(async response => {
                     const timeEntries =
                         response.data.timeEntriesList.filter(entry => entry.timeInterval.end);
                     const durationMap = response.data.durationMap;
+                    const groupEntries = await this.groupEntries(timeEntries, durationMap);
                     this.setState({
-                        timeEntries: this.groupEntries(timeEntries, durationMap),
+                        timeEntries: groupEntries,
                         durationMap: durationMap,
                         ready: true,
                         isOffline: false   // should set isOffline here
+                    }, () => {
+                        localStorage.setItem('preData', {groupEntries: groupEntries, durationMap, dates: this.state.dates});
                     });
                 })
                 .catch((error) => {
                     this.setState({
-                        isOffline: isOffline()
+                        isOffline: isOff
                     });
                 });
         } else {
             this.setState({
                 timeEntries: offlineStorage.timeEntriesOffline.length > 0 ?
-                    this.groupEntries(offlineStorage.timeEntriesOffline)
+                    await this.groupEntries(offlineStorage.timeEntriesOffline)
                     : [],
                 ready: true,
                 isOffline: true   // should set isOffline here
@@ -591,12 +645,12 @@ class HomePage extends React.Component {
     }
 
 
-    groupEntries(timeEntries, durationMap) {
+    async groupEntries(timeEntries, durationMap) {
         let dates = [];
         const trackTimeDownToSeconds =
             typeof this.state.workspaceSettings.trackTimeDownToSecond !== "undefined" ?
                 this.state.workspaceSettings.trackTimeDownToSecond :
-                JSON.parse(localStorageService.get("workspaceSettings")).trackTimeDownToSecond;
+                JSON.parse(await localStorageService.get("workspaceSettings")).trackTimeDownToSecond;
 
         if (timeEntries.length > 0) {
             this.groupTimeEntriesByDays(timeEntries, trackTimeDownToSeconds, dates);
@@ -608,8 +662,10 @@ class HomePage extends React.Component {
             if (durationMap) {
                 dayDuration = formatedDurationMap[day];
             } else {
-                timeEntries.filter(entry => entry.start === day).map(entry => {
-                    dayDuration = dayDuration + duration(entry.timeInterval.duration);
+                timeEntries.forEach(entry => {
+                    if(entry => entry.start === day){
+                        dayDuration = dayDuration + duration(entry.timeInterval.duration);
+                    }
                 });
             }
             return day + "-" + duration(dayDuration).format(
@@ -618,16 +674,16 @@ class HomePage extends React.Component {
         });
 
         this.setState({
-            dates: dates
+            dates
         });
 
         return timeEntries;
     }
 
     groupTimeEntriesByDays(timeEntries, trackTimeDownToSeconds, dates) {
-        timeEntries.map(timeEntry => {
+        timeEntries.forEach(timeEntry => {
             if (moment(timeEntry.timeInterval.start).isSame(moment(), 'day')) {
-                timeEntry.start = 'Today';
+                timeEntry.start = locales.TODAY_LABEL;
             } else {
                 timeEntry.start = moment(timeEntry.timeInterval.start).format('ddd, Do MMM');
             }
@@ -656,22 +712,20 @@ class HomePage extends React.Component {
         let formatedKey;
         for (let key in durationMap) {
             formatedKey = moment(key).isSame(moment(), 'day') ?
-                'Today' : moment(key).format('ddd, Do MMM');
+                locales.TODAY_LABEL : moment(key).format('ddd, Do MMM');
             formatedDurationMap[formatedKey] = durationMap[key];
         }
 
         return formatedDurationMap;
     }
 
-    handleScroll(event) {
-        if (!isOffline()) {
-            this.log('>>>>> handleScroll')
-        }
+    async handleScroll(event) {
+        const isOff = await isOffline();
 
         if (event.srcElement.body.scrollTop + window.innerHeight >
             event.srcElement.body.scrollHeight - 100 &&
             this.state.loadMore && !this.state.loading &&
-            !isOffline()) {
+            !isOff) {
 
             this.loadMoreEntries();
         }
@@ -683,13 +737,13 @@ class HomePage extends React.Component {
             loading: true
         }, () => {
             timeEntryService.getTimeEntries(this.state.pageCount)
-                .then(response => {
+                .then(async response => {
                     const data = response.data;
                     const entries = data.timeEntriesList.filter(entry => entry.timeInterval.end);
                     const durationMap = data.durationMap;
                     const newDurationMap = this.concatDurationMap(this.state.durationMap, durationMap);
                     this.setState({
-                        timeEntries: this.groupEntries(
+                        timeEntries: await this.groupEntries(
                             this.state.timeEntries.concat(entries),
                             newDurationMap
                         ),
@@ -729,7 +783,6 @@ class HomePage extends React.Component {
         this.setState({
             mode: mode
         }, () => {
-            // console.log('!!!!! menjam mode in home', mode)
             localStorage.setItem('mode', mode);
         })
     }
@@ -739,14 +792,14 @@ class HomePage extends React.Component {
             inProgress: inProgress
         }, () => {
             localStorage.setItem('inProgress', !!inProgress);
-            localStorage.setItem('timeEntryInProgress', JSON.stringify(inProgress));
+            localStorage.setItem('timeEntryInProgress', inProgress);
         })
     }
 
-    endStartedAndStart(timeEntry) {
-        if (isOffline()) {
-
-            if (localStorage.getItem('inProgress') && JSON.parse(localStorage.getItem('inProgress'))) {
+    async endStartedAndStart(timeEntry) {
+        if (await isOffline()) {
+            const inProgress = await localStorage.getItem('inProgress');
+            if (inProgress && JSON.parse(inProgress)) {
                 this.start.setTimeEntryInProgress(null); 
             }
 
@@ -776,30 +829,48 @@ class HomePage extends React.Component {
             this.handleRefresh();
         } 
         else {
+            const { projectId, billable, task, description, customFieldValues, tags } = timeEntry;
+            const taskId = task ? task.id : null;
+            const tagIds = tags ? tags.map(tag => tag.id) : [];
+
             timeEntryService.stopEntryInProgress(moment())
                 .then(() => {
-                    if (isAppTypeExtension()) {
-                        getBrowser().extension.getBackgroundPage().removeIdleListenerIfIdleIsEnabled();
-                        getBrowser().extension.getBackgroundPage().setTimeEntryInProgress(null);
-                    }
+                    // getBrowser().extension.getBackgroundPage().removeIdleListenerIfIdleIsEnabled();
+                    getBrowser().runtime.sendMessage({
+                        eventName: 'removeIdleListenerIfIdleIsEnabled'
+                    });
+                    // getBrowser().extension.getBackgroundPage().setTimeEntryInProgress(null);
+                    localStorage.setItem('timeEntryInProgress', null);
                     this.getTimeEntries(); 
+                
+                    const cfs = customFieldValues && customFieldValues.length > 0
+                                ? customFieldValues.filter(({customFieldDto}) => customFieldDto.status === 'VISIBLE').map(({type, customFieldId, value}) => ({ 
+                                    customFieldId,
+                                    sourceType: 'TIMEENTRY',
+                                    value: type === 'NUMBER' ? parseFloat(value) : value
+                                }))
+                                : [];
                     
-                    timeEntryService.createEntry(
-                        timeEntry.workspaceId,
-                        timeEntry.description,
+                    timeEntryService.startNewEntry(
+                        projectId,
+                        description,
+                        billable,
                         moment(),
                         null,
-                        timeEntry.projectId,
-                        timeEntry.task ? timeEntry.task.id : null,
-                        timeEntry.tags ? timeEntry.tags.map(tag => tag.id) : [],
-                        timeEntry.billable
+                        taskId,
+                        tagIds,
+                        cfs
                     ).then(response => {
                         let data = response.data;
                         this.start.getTimeEntryInProgress();
-                        if (isAppTypeExtension()) {
-                            getBrowser().extension.getBackgroundPage().addIdleListenerIfIdleIsEnabled();
-                            getBrowser().extension.getBackgroundPage().setTimeEntryInProgress(data);
-                        }
+                        
+                        // getBrowser().extension.getBackgroundPage().addIdleListenerIfIdleIsEnabled();
+                        getBrowser().runtime.sendMessage({
+                            eventName: 'addIdleListenerIfIdleIsEnabled'
+                        });
+                        // getBrowser().extension.getBackgroundPage().setTimeEntryInProgress(data);
+                        localStorage.setItem('timeEntryInProgress', data);
+                        
                     }).catch(() => {});
                 })
                 .catch(() => {
@@ -807,10 +878,10 @@ class HomePage extends React.Component {
         }
     }
 
-    checkRequiredFields(timeEntry) {
+    async checkRequiredFields(timeEntry) {
         const {forceProjects, forceTasks, forceTags, forceDescription} = this.state.workspaceSettings;
         const {mode, inProgress} = this.state;
-        if (isOffline()) {
+        if (await isOffline()) {
             this.endStartedAndStart(timeEntry);
         } 
         else if (forceDescription &&
@@ -868,11 +939,11 @@ class HomePage extends React.Component {
         );
     }
 
-    continueTimeEntry(timeEntry) {
+    async continueTimeEntry(timeEntry) {
         if (this.state.inProgress) {
             this.checkRequiredFields(timeEntry);
         } else {
-            if (isOffline()) {
+            if (await isOffline()) {
                 let timeEntryOffline = {
                     id: offlineStorage.timeEntryIdTemp,
                     description: timeEntry.description,
@@ -887,31 +958,48 @@ class HomePage extends React.Component {
                 offlineStorage.timeEntryInOffline = timeEntryOffline;
                 this.start.setTimeEntryInProgress(timeEntryOffline);
             } else {
-                timeEntryService.createEntry(
-                    timeEntry.workspaceId,
-                    timeEntry.description,
+                const { projectId, billable, task, description, tags } = timeEntry;
+                const taskId = task ? task.id : null;
+                const tagIds = tags ? tags.map(tag => tag.id) : [];
+                const { customFieldValues } = offlineStorage;
+
+                const cfs = customFieldValues && customFieldValues.length > 0
+                                ? customFieldValues.filter(cf => cf.customFieldDto.status === 'VISIBLE').map(({type, customFieldId, value}) => ({ 
+                                    customFieldId,
+                                    sourceType: 'TIMEENTRY',
+                                    value: type === 'NUMBER' ? parseFloat(value) : value
+                                }))
+                                : [];
+
+                timeEntryService.startNewEntry(
+                    projectId,
+                    description,
+                    billable,
                     moment(),
                     null,
-                    timeEntry.projectId,
-                    timeEntry.task ? timeEntry.task.id : null,
-                    timeEntry.tags ? timeEntry.tags.map(tag => tag.id) : [],
-                    timeEntry.billable,
-                    offlineStorage.customFieldValues // generated from wsCustomFields
+                    taskId,
+                    tagIds,
+                    cfs // generated from wsCustomFields
                 ).then(response => {
                     let data = response.data;
                     this.start.getTimeEntryInProgress();
-                    if (isAppTypeExtension()) {
-                        getBrowser().extension.getBackgroundPage().addIdleListenerIfIdleIsEnabled();
-                        getBrowser().extension.getBackgroundPage().addPomodoroTimer();
-                        getBrowser().extension.getBackgroundPage().setTimeEntryInProgress(data);
-                    }
+                    // getBrowser().extension.getBackgroundPage().addIdleListenerIfIdleIsEnabled();
+                    getBrowser().runtime.sendMessage({
+                        eventName: 'addIdleListenerIfIdleIsEnabled'
+                    });
+                    // getBrowser().extension.getBackgroundPage().addPomodoroTimer();
+                    getBrowser().runtime.sendMessage({
+                        eventName: 'pomodoroTimer'
+                    });
+                    // getBrowser().extension.getBackgroundPage().setTimeEntryInProgress(data);
+                    localStorage.setItem('timeEntryInProgress', data);
                     this.application.setIcon(getIconStatus().timeEntryStarted);
                 }).catch(() => {});
             }
         }
     }
     
-    handleRefresh(check=false) {
+    async handleRefresh(check=false) {
         if (check) {
             timeEntryService.getEntryInProgress()
                 .then(response => {
@@ -923,8 +1011,10 @@ class HomePage extends React.Component {
                 });
         }
         else {
-            if (!isOffline()) {
+            if (!(await isOffline())) {
+                
                 this.saveAllOfflineEntries();
+                
                 this.reloadData();
             }
             else {
@@ -933,9 +1023,9 @@ class HomePage extends React.Component {
         }
     }
 
-    reloadData(reload=false) {
+    async reloadData(reload=false) {
         this.log('reloadData ' + (reload ? 'mount (why without unmount?)': ''));
-        if (!isOffline()) {
+        if (!( await isOffline())) {
             this.setState({
                 pageCount: 0
             }, () => {
@@ -950,9 +1040,9 @@ class HomePage extends React.Component {
     }
 
     enableAllIntegrationsButtonIfNoneIsEnabled() {
-        getBrowser().storage.local.get('permissions', (result) => {
+        getBrowser().storage.local.get('permissions', async (result) => {
             const { permissions } = result;
-            const userId = localStorage.getItem('userId');
+            const userId = await localStorage.getItem('userId');
 
             if (permissions && permissions.length > 0) {
                 const permissionForUser = permissions.filter(permission => permission.userId === userId);
@@ -1004,96 +1094,104 @@ class HomePage extends React.Component {
         this.toaster.toast('info', message, n||2);
     }
 
-    render() {
-        if (!this.state.ready) {
-            return null;
-        } else {
-            this.log("HomePage render")
-            const activeWorkspaceId = localStorageService.get('activeWorkspaceId');
-            const timeEntriesOffline = offlineStorage.timeEntriesOffline
-                    .filter(timeEntry => !timeEntry.workspaceId || timeEntry.workspaceId === activeWorkspaceId);
-            const { inProgress, isOffline, mode, 
-                    workspaceSettings,
-                    features,
-                    timeEntries, 
-                    userSettings, 
-                    isUserOwnerOrAdmin, pullToRefresh, dates } = this.state;
-            return (
-                <div className="home_page">
-                    {_withLogger &&
-                        <Logger ref={this.loggerRef} />
-                    }
-                    <div className="header_and_timer">
-                        <Header 
-                                ref={instance => {this.header = instance}}
-                                showActions={true}
-                                showSync={true}
-                                changeMode={this.changeMode}
-                                disableManual={!!inProgress}
-                                disableAutomatic={false}
-                                handleRefresh={this.handleRefresh}
-                                workspaceSettings={workspaceSettings}
-                                isTrackerPage={true}
-                                workspaceChanged={this.workspaceChanged}
-                                isOffline={isOffline}
-                        />
-                        <Toaster
-                            ref={instance => {this.toaster = instance}}
-                        />
-                        <StartTimer
-                            ref={instance => {
-                                this.start = instance;
-                            }}
-                            message={this.showMessage.bind(this)}
-                            mode={mode}
+    clearEntries() {
+        this.setState({
+            timeEntries: [],
+            ready: false
+        });
+    }
+
+    render() {        
+        const {activeWorkspaceId} = this.state;
+        const timeEntriesOffline = offlineStorage.timeEntriesOffline
+                .filter(timeEntry => !timeEntry.workspaceId || timeEntry.workspaceId === activeWorkspaceId);
+        const { inProgress, isOffline, mode, 
+                workspaceSettings,
+                features,
+                timeEntries, 
+                userSettings, 
+                manualModeDisabled,
+                isUserOwnerOrAdmin, pullToRefresh, dates } = this.state;
+        return (
+            <div className="home_page">
+                {_withLogger &&
+                    <Logger ref={this.loggerRef} />
+                }
+                <div className="header_and_timer">
+                    <Header 
+                            ref={instance => {this.header = instance}}
+                            showActions={true}
+                            showSync={true}
                             changeMode={this.changeMode}
-                            endStarted={this.handleRefresh}
-                            setTimeEntryInProgress={this.inProgress.bind(this)}
+                            disableManual={!!inProgress}
+                            disableAutomatic={false}
+                            handleRefresh={this.handleRefresh}
                             workspaceSettings={workspaceSettings}
-                            features={features}
-                            timeEntries={timeEntries}
-                            timeFormat={userSettings.timeFormat}
-                            userSettings={userSettings}
-                            toaster= {this.toaster}
-                            log={this.log}
-                        />
-                    </div>
-                    <div className={!isOffline && 
-                                    timeEntriesOffline && 
-                                    timeEntriesOffline.length > 0 ? "" : "disabled"}>
-                        {!isOffline && 
-                            <TimeEntryListNotSynced
-                                timeEntries={timeEntriesOffline}
-                                pullToRefresh={pullToRefresh}
-                                handleRefresh={this.handleRefresh}
-                                workspaceSettings={workspaceSettings}
-                                features={features}
-                                timeFormat={userSettings.timeFormat}
-                                userSettings={userSettings}
-                                isUserOwnerOrAdmin={this.state.isUserOwnerOrAdmin}
-                            />
-                        }
-                    </div>
-                    <div className={(timeEntries.length===0 ? "time-entry-list__offline" : "time-entry-list")}>
-                        <TimeEntryList
-                            timeEntries={timeEntries}
-                            dates={dates}
-                            selectTimeEntry={this.continueTimeEntry.bind(this)}
+                            isTrackerPage={true}
+                            workspaceChanged={this.workspaceChanged}
+                            isOffline={isOffline}
+                            toaster={this.toaster}
+                            mode={mode}
+                            manualModeDisabled={manualModeDisabled}
+                            clearEntries={this.clearEntries}
+                    />
+                    <Toaster
+                        ref={instance => {this.toaster = instance}}
+                    />
+                    <StartTimer
+                        ref={instance => {
+                            this.start = instance;
+                        }}
+                        message={this.showMessage.bind(this)}
+                        mode={mode}
+                        changeMode={this.changeMode}
+                        endStarted={this.handleRefresh}
+                        setTimeEntryInProgress={this.inProgress.bind(this)}
+                        workspaceSettings={workspaceSettings}
+                        features={features}
+                        timeEntries={timeEntries}
+                        timeFormat={userSettings.timeFormat}
+                        userSettings={userSettings}
+                        toaster= {this.toaster}
+                        log={this.log}
+                    />
+                </div>
+                <div className={!isOffline && 
+                                timeEntriesOffline && 
+                                timeEntriesOffline.length > 0 ? "" : "disabled"}>
+                    {!isOffline && 
+                        <TimeEntryListNotSynced
+                            timeEntries={timeEntriesOffline}
                             pullToRefresh={pullToRefresh}
                             handleRefresh={this.handleRefresh}
-                            changeMode={this.changeMode}
-                            timeFormat={userSettings.timeFormat}
                             workspaceSettings={workspaceSettings}
                             features={features}
+                            timeFormat={userSettings.timeFormat}
                             userSettings={userSettings}
-                            isOffline={isOffline}
-                            isUserOwnerOrAdmin={this.state.isUserOwnerOrAdmin}
+                            isUserOwnerOrAdmin={isUserOwnerOrAdmin}
                         />
-                    </div>
+                    }
                 </div>
-            )
-        }
+                <div className={(timeEntries.length===0 ? "time-entry-list__offline" : "time-entry-list")}>
+                    <TimeEntryList
+                        timeEntries={timeEntries}
+                        isLoading={!this.state.ready}
+                        dates={dates}
+                        selectTimeEntry={this.continueTimeEntry.bind(this)}
+                        pullToRefresh={pullToRefresh}
+                        handleRefresh={this.handleRefresh}
+                        changeMode={this.changeMode}
+                        timeFormat={userSettings.timeFormat}
+                        workspaceSettings={workspaceSettings}
+                        features={features}
+                        userSettings={userSettings}
+                        isOffline={isOffline}
+                        isUserOwnerOrAdmin={isUserOwnerOrAdmin}
+                    />
+                </div>
+            </div>
+        )
     }
-}
+    }
 
 export default HomePage;

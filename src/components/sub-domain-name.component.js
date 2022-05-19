@@ -2,9 +2,11 @@ import React from 'react';
 import * as ReactDOM from 'react-dom';
 import Header from './header.component';
 import Login from './login.component';
-import {SettingsService} from "../services/settings-service";
+// import {SettingsService} from "../services/settings-service";
+import locales from "../helpers/locales";
+import SelfHostedBootSettings from "./self-hosted-login-settings.component";
 
-const settingsService = new SettingsService();
+// const settingsService = new SettingsService();
 
 class SubDomainName extends React.Component {
     constructor(props) {
@@ -32,9 +34,12 @@ class SubDomainName extends React.Component {
 
     submitDomainName() {
         let domainName = document.getElementById('domainName').value;
-        settingsService.setSubDomainName(domainName);
-        settingsService.setHomeUrl(`https://${domainName}.clockify.me`)
-        ReactDOM.render(<Login/>, document.getElementById('mount'))
+        // settingsService.setSubDomainName(domainName);
+        // settingsService.setHomeUrl(`https://${domainName}.clockify.me`)
+        ReactDOM.render(
+            <SelfHostedBootSettings url={`https://${domainName}.clockify.me`}/>,
+            document.getElementById("mount")
+        );
     }
 
     cancel() {
@@ -47,19 +52,19 @@ class SubDomainName extends React.Component {
                 <Header showActions={false}/>
                 <form className="sub-domain">
                     <div>
-                        <label className="sub-domain__server_url">Domain name</label>
+                        <label className="sub-domain__server_url">{locales.SUBDOMAIN_NAME}</label>
                         <div className="sub-domain__input">
                             <span className={"sub-domain__input--prepend"}>https://</span>
-                            <input required = {true} id="domainName" placeholder="Domain name"/>
+                            <input required = {true} id="domainName" placeholder={locales.SUBDOMAIN_NAME}/>
                             <span className={"sub-domain__input--append"}>.clockify.me</span>
                         </div>
                     </div>
                 </form>
                 <div className="sub-domain__actions">
                     <button className="sub-domain__actions--submit"
-                            onClick={this.submitDomainName.bind(this)}>Submit</button>
+                            onClick={this.submitDomainName.bind(this)}>{locales.SUBMIT}</button>
                     <a className="sub-domain__actions--cancel"
-                       onClick={this.cancel.bind(this)}>Cancel</a>
+                       onClick={this.cancel.bind(this)}>{locales.CANCEL}</a>
                 </div>
             </div>
         )
