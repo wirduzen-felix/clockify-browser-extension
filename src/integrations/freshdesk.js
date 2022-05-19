@@ -30,7 +30,7 @@ function render() {
           description: ticketheading,
           projectName: "WIRDUZEN Interne Arbeiten",
           taskName: desc,
-          billable: false
+          billable: false,
         });
         console.log("type: Interne Arbeiten");
       }
@@ -40,14 +40,19 @@ function render() {
           description: ticketheading,
           projectName: "WIRDUZEN Shopware Plugin Support",
           taskName: desc,
-          billable: false
+          billable: false,
         });
         console.log("type: store Plugins");
       }
       /*Aufträge werden in ein Projekt Pro Kunden geladen und nicht abrechenbar angelegt, da sie über den Auftrag selbst
           abgerechnet werden*/
       else if (type == "Auftrag aus weclapp") {
-        link = clockifyButton.createButton(ticketheading, "Aufträge " + company, desc, false);
+        link = clockifyButton.createButton({
+          description: ticketheading,
+          projectName: "Aufträge " + company,
+          taskName: desc,
+          billable: false,
+        });
         console.log("type: Aufträge");
       } else {
         console.log("type: NO TYPE");
@@ -56,7 +61,7 @@ function render() {
           description: ticketheading,
           projectName: "Support " + company,
           taskName: desc,
-          billable
+          billable,
         });
       }
 

@@ -640,7 +640,7 @@
     "message": "Stoppen Sie den Timer, wenn der Browser geschlossen wird"
   },
   "EXTENSION__STOP_TIMER": {
-    "message": "Stoppuhr"
+    "message": "Timer stoppen"
   },
   "EXTENSION__DESCRIPTION_REQUIRED": {
     "message": "Beschreibung (erforderlich)"
