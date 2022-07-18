@@ -2,9 +2,12 @@
 getProject = () =>  {
     //project = $('.TaskProjects .TokenizerPillBase-name').textContent,
     //let project = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay li.TaskProjectToken.TaskProjects-project');
-    let project = $('.SingleTaskPaneSpreadsheet .LegacyTaskProjects .TokenizerPillBase-name');
+    let project = $('.SingleTaskPaneSpreadsheet .TaskProjectToken .TokenizerPillBase-name');
     if (!project) {
-        project = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay .LegacyTaskProjects .TokenizerPillBase-name');
+        project = $('.SingleTaskPaneSpreadsheet .LegacyTaskProjects .TokenizerPillBase-name');
+        if(!project) {
+          project = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay .TaskProjectToken .TokenizerPillBase-name');
+        }
         if (!project)
             project = $('.SingleTaskPaneSpreadsheet .TaskAncestry-ancestorProjects');
         if (!project)

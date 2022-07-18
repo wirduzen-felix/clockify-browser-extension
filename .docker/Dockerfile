@@ -3,7 +3,7 @@ SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update &&\
     apt-get upgrade -y &&\
-    apt-get install -y curl nano wget rsync sudo gnupg gnupg2 ruby ruby-dev bundler
+    apt-get install -y curl nano wget rsync sudo gnupg gnupg2 ruby ruby-dev bundler nodejs npm zip unzip
 RUN mkdir -p /home/dev/src
 RUN useradd -UM -d /home/dev -G sudo dev
 RUN echo "dev:dev" | chpasswd
@@ -12,8 +12,4 @@ RUN gem install compass
 USER dev
 RUN touch ~/.bashrc
 RUN echo "cd /home/dev/src" >> ~/.bashrc
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash &&\
-    source ~/.bashrc &&\
-    nvm install --lts &&\
-    nvm use --lts
 ENTRYPOINT ["tail", "-f", "/dev/null"]
