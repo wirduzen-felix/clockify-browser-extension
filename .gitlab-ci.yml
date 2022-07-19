@@ -54,6 +54,8 @@ deploy-job:
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
   script:
     - scp -P 222 chrome.zip wirduzm@dedivirt1815.your-server.de:~/public_html/clockify.wirduzen.dev/
     - scp -P 222 firefox.zip wirduzm@dedivirt1815.your-server.de:~/public_html/clockify.wirduzen.dev/
