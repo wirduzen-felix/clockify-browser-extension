@@ -1,6 +1,7 @@
 stages:
   - build
   - release
+  - deploy
 build-job:
   stage: build
   image: git.wirduzen.zone:5050/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension:latest
@@ -39,5 +40,24 @@ release-job:
           url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/chrome.zip?job=build-job'
         - name: 'Firefox'
           url: 'https://git.wirduzen.zone/kunden/wirduzen-digital-gmbh-10005/clockify-browserextension/-/jobs/${GE_JOB_ID}/artifacts/raw/firefox.zip?job=build-job'
+  only:
+    - tags
+deploy-job:
+  stage: deploy
+  image: ubuntu:20.04
+  needs:
+    - job: build-job
+      artifacts: true
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+  script:
+    - scp -P 222 chrome.zip wirduzm@dedivirt1815.your-server.de:~/public_html/clockify.wirduzen.dev/
+    - scp -P 222 firefox.zip wirduzm@dedivirt1815.your-server.de:~/public_html/clockify.wirduzen.dev/
+    - echo "$CI_COMMIT_TAG" > wdu-version.txt
+    - scp -P 222 wdu-version.txt wirduzm@dedivirt1815.your-server.de:~/public_html/clockify.wirduzen.dev/
   only:
     - tags
