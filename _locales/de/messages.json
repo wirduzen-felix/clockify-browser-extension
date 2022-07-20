@@ -691,7 +691,7 @@
     "message": "Alle deaktivieren"
   },
   "EXTENSION__CUSTOM_DOMAINS": {
-    "message": "Benutzerdefinierte Domänen"
+    "message": "Benutzerdefinierte Domänen (z.B.: help.wirduzen.de)"
   },
   "EXTENSION__HOSTED_ON_CUSTOM_DOMAIN": {
     "message": "Wenn Sie ein Tool verwenden, das auf einer benutzerdefinierten Domain gehostet wird, können Sie es hier aktivieren"
