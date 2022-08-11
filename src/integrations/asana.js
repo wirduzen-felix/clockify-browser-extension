@@ -2,7 +2,7 @@
 getProject = () =>  {
     //project = $('.TaskProjects .TokenizerPillBase-name').textContent,
     //let project = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay li.TaskProjectToken.TaskProjects-project');
-    let project = $('.SingleTaskPaneSpreadsheet .TaskProjectToken .TokenizerPillBase-name');
+    let project = $('.TaskPane .TaskProjectToken .TokenizerPillBase-name');
     if (!project) {
         project = $('.SingleTaskPaneSpreadsheet .LegacyTaskProjects .TokenizerPillBase-name');
         if(!project) {
@@ -21,7 +21,7 @@ getProject = () =>  {
 
 // New task pane list detail modal
 setTimeout(() => {
-    clockifyButton.render('.SingleTaskPaneSpreadsheet:not(.clockify)',
+    clockifyButton.render('.TaskPane:not(.clockify)',
         {observe: true}, 
         (elem) => {
             const 
