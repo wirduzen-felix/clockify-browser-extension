@@ -23,7 +23,7 @@ setTimeout(() => {
         (elem) => {
             const 
                 //descriptionSelector = $('.SingleTaskTitleInput-taskName textarea', elem),
-                taskSelector = $('.SingleTaskPaneSpreadsheet-titleRow textarea'),
+                taskSelector = $('.TaskPane-titleRow textarea'),
                 // descriptionSelector = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay div.TaskDescription', elem),
                 subTask = $('.TaskAncestry-ancestorLink.SecondaryNavigationLink', elem),
                 mainTask = taskSelector ? taskSelector.textContent : null,
@@ -32,7 +32,7 @@ setTimeout(() => {
                     //return (subTaskName??"") + (!!subTaskName && !!task ? " / " : "") + (task??"")
                     return subTaskName??mainTask
                 },
-                container = $('.SingleTaskPaneToolbarAnimation-row', elem),
+                container = $('.TaskPaneToolbarAnimation-row', elem),
                 description = () => mainTask??""// descriptionSelector && !descriptionSelector.textContent.startsWith("Add more detail") //&& !!descriptionSelector.textContent
                     //? descriptionSelector.textContent : ""
                     ////: taskSelector 
