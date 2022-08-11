@@ -4,10 +4,7 @@ getProject = () =>  {
     //let project = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay li.TaskProjectToken.TaskProjects-project');
     let project = $('.TaskPane .TaskProjectToken .TokenizerPillBase-name');
     if (!project) {
-        project = $('.SingleTaskPaneSpreadsheet .LegacyTaskProjects .TokenizerPillBase-name');
-        if(!project) {
-          project = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay .TaskProjectToken .TokenizerPillBase-name');
-        }
+        project = $('div.FullWidthPageStructureWithDetailsOverlay-detailsOverlay .TaskProjects .TokenizerPillBase-name');
         if (!project)
             project = $('.SingleTaskPaneSpreadsheet .TaskAncestry-ancestorProjects');
         if (!project)
